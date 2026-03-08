@@ -1,0 +1,107 @@
+# =============================================================================
+# GitHub Actions Workflow - Radar de Convocatorias (Monitor + Build + Deploy)
+# =============================================================================
+#
+# Este workflow hace TODO automáticamente:
+#   1. Ejecuta el monitor de convocatorias (funding_monitor.py)
+#   2. Genera/actualiza public/calls.json con las convocatorias encontradas
+#   3. Hace build del dashboard React (Vite)
+#   4. Despliega a GitHub Pages
+#   5. Envía email si hay convocatorias nuevas (opcional)
+#
+# SETUP:
+#   1. Repositorio: github.com/Alfrelerin/radar-convocatorias
+#   2. Sube los archivos: funding_monitor.py, src/, package.json, etc.
+#   3. Settings → Pages → Source: "GitHub Actions"
+#   4. Settings → Secrets → Actions (OPCIONALES para email):
+#      - EMAIL_FROM:     lerinalfre@gmail.com
+#      - EMAIL_TO:       lerinalfre@gmail.com
+#      - EMAIL_PASSWORD: App Password de Gmail (16 caracteres)
+#
+# NOTA: El dashboard se actualiza SIEMPRE, el email es opcional.
+# =============================================================================
+
+name: Radar de Convocatorias
+
+on:
+  schedule:
+    # L-V a las ~8:00 hora Madrid (6:00 UTC todo el año → 7:00 CET / 8:00 CEST)
+    - cron: '0 6 * * 1-5'
+
+  push:
+    branches: [main]
+
+  workflow_dispatch:  # Ejecutar manualmente desde GitHub
+
+# Permisos para desplegar a GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Evitar ejecuciones simultáneas
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  monitor-build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ─── Checkout ───
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ─── Monitor de convocatorias ───
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install requests beautifulsoup4 feedparser
+
+      - name: Run funding monitor
+        env:
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          CALLS_JSON_PATH: public/calls.json
+        run: python3 funding_monitor.py
+        continue-on-error: true  # No bloquear el deploy si el monitor falla
+
+      - name: Persist monitor data
+        run: |
+          git config user.name "Funding Bot"
+          git config user.email "bot@neuron-rehab.com"
+          git add public/calls.json funding_history.json
+          git diff --staged --quiet || git commit -m "Update calls.json [skip ci]"
+          git push || echo "Push failed (probably concurrent run), continuing..."
+        continue-on-error: true
+
+      # ─── Build del dashboard ───
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build dashboard
+        run: npm run build
+
+      # ─── Deploy a GitHub Pages ───
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
