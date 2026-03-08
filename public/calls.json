@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-03-08T20:00:00",
-  "total": 15,
+  "last_updated": "2026-03-08T21:24:31.193746",
+  "total": 21,
   "manual_count": 15,
-  "auto_count": 0,
-  "new_this_run": 0,
+  "auto_count": 6,
+  "new_this_run": 6,
   "calls": [
     {
       "id": "1",
@@ -184,6 +184,90 @@
       "budget": "~1M€ total · Proyectos hasta 2 años · Equipamiento, fungible, PI",
       "notes": "1ª edición. Doble carrera clínica-investigadora. 4 modalidades: Enfermería, Atención Primaria, <45 años, certificado R3. Requiere vinculación con IIS públicos acreditados, hospitales públicos o centros de Atención Primaria de la CM. Publicado BOCM 25/02/2026, plazo 15 días hábiles (~18 marzo). Para clínica privada: explorar vía colaboración con IIS público (ej: IdISSC, IdiPAZ, i+12). Requiere doctorado.",
       "starred": true
+    },
+    {
+      "id": "auto_5983fb7ce917",
+      "title": "SAT-Design – A Web Platform for Programmable Self-Assembly",
+      "source": "horizon",
+      "url": "https://cordis.europa.eu/project/rcn/284724/en?WT.mc_id=RSS-Feed&WT.rss_f=project&WT.rss_a=284724&WT.rss_ev=a",
+      "deadline": "Fri, 06 Mar 2026 14:10:20 +0100",
+      "status": "open",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: Horizon Europe · Tipo: Europea · Relevancia: 5% · Keywords: grant. Self-assembly offers a powerful route to create nanostructures with applications in photonics, biotechnology, and advanced materials. Yet, designing b",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-08"
+    },
+    {
+      "id": "auto_c03dae02ac8d",
+      "title": "Understanding the Intuitive Foundations of Democratic Norms and Procedures",
+      "source": "horizon",
+      "url": "https://cordis.europa.eu/project/rcn/284477/en?WT.mc_id=RSS-Feed&WT.rss_f=project&WT.rss_a=284477&WT.rss_ev=a",
+      "deadline": "Fri, 06 Mar 2026 14:07:57 +0100",
+      "status": "open",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: Horizon Europe · Tipo: Europea · Relevancia: 5% · Keywords: call. We live in a new age of democratic backsliding. Democracies are not falling to coup d’etat, nor are they subverted by blatant vote fraud. Democracies ",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-08"
+    },
+    {
+      "id": "auto_07069bfc22a0",
+      "title": "Convocatorias de la Fundación BBVAConvocatorias abiertasPremiosPremios de Investigación Sociedad Científica Informática de España-Fundación BBVA 2026Más informaciónXIX Premios Fronteras del Conocimien",
+      "source": "fundacion",
+      "url": "https://www.linkedin.com/cws/share?url=https://www.fbbva.es/convocatorias/",
+      "deadline": "2026-03-08",
+      "status": "open",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: Fundación BBVA · Tipo: Privada · Relevancia: 10% · Keywords: ayuda, convocatoria. ",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-08"
+    },
+    {
+      "id": "auto_b2cebcfc00f3",
+      "title": "Convocatorias y Ayudas a la InvestigaciónSeccionesConvocatorias 2025Convocatorias 2024Convocatorias 2023Convocatorias 2022Convocatorias 2021Convocatorias 2020Convocatorias anterioresContenido relacion",
+      "source": "cm",
+      "url": "https://www.comunidad.madrid/servicios/investigacion-cientifica-e-innovacion-tecnologica/convocatorias-ayudas-investigacion#convocatorias-2025",
+      "deadline": "2026-03-08",
+      "status": "open",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: Comunidad de Madrid · Tipo: Nacional · Relevancia: 55% · Keywords: empresa, industrial, innovación, I+D, ayuda. ",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-08"
+    },
+    {
+      "id": "auto_c88d18a2964c",
+      "title": "Calendario de publicación de Convocatorias de la Dirección General de Investigación e Innovación Tecnológica (DGIIT).",
+      "source": "cm",
+      "url": "https://www.comunidad.madrid/servicios/investigacion-cientifica-e-innovacion-tecnologica/calendario-publicacion-convocatorias-direccion-general-investigacion-e-innovacion-tecnologica-dgiit",
+      "deadline": "2026-03-08",
+      "status": "open",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: Comunidad de Madrid · Tipo: Nacional · Relevancia: 10% · Keywords: innovación, convocatoria. ",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-08"
+    },
+    {
+      "id": "auto_172e4b43a43f",
+      "title": "Investigación Científica e Innovación Tecnológica",
+      "source": "cm",
+      "url": "https://www.comunidad.madrid/servicios/investigacion-cientifica-e-innovacion-tecnologica",
+      "deadline": "2026-03-08",
+      "status": "open",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: Comunidad de Madrid · Tipo: Nacional · Relevancia: 5% · Keywords: innovación. ",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-08"
     }
   ]
 }
