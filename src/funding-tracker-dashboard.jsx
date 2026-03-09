@@ -15,6 +15,7 @@ const STATUS_MAP = {
   upcoming: { label: "Próxima", color: "#E67E22", bg: "#FFF3E0" },
   closed: { label: "Cerrada", color: "#999", bg: "#F5F5F5" },
   applied: { label: "Solicitada", color: "#0F4C81", bg: "#E3F2FD" },
+  descartada: { label: "Descartada", color: "#777", bg: "#EEEEEE" },
 };
 
 const ELEGIBILITY = [
@@ -221,6 +222,19 @@ function daysUntil(dateStr) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+// Auto-clasifica convocatorias auto-detectadas según su deadline
+function autoClassify(call) {
+  // No reclasificar manuales ni descartadas ni solicitadas
+  if (!call.auto_detected) return call;
+  if (call.status === "descartada" || call.status === "applied") return call;
+
+  const days = daysUntil(call.deadline);
+  if (days === null) return { ...call, status: "open" }; // Sin fecha → abierta por defecto
+  if (days < 0) return { ...call, status: "closed" };    // Pasada → cerrada
+  if (days > 30) return { ...call, status: "upcoming" };  // >30 días → próxima
+  return { ...call, status: "open" };                     // ≤30 días → abierta (urgente se calcula aparte)
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
@@ -276,7 +290,7 @@ const UrgencyBar = ({ days }) => {
   );
 };
 
-const CallCard = ({ call, onEdit, onToggleStar, onDelete }) => {
+const CallCard = ({ call, onEdit, onToggleStar, onDelete, onDiscard, onRecover }) => {
   const source = SOURCES.find((s) => s.id === call.source) || SOURCES[6];
   const status = STATUS_MAP[call.status] || STATUS_MAP.open;
   const days = daysUntil(call.deadline);
@@ -322,7 +336,7 @@ const CallCard = ({ call, onEdit, onToggleStar, onDelete }) => {
               </span>
             )}
           </div>
-          {call.status !== "closed" && call.status !== "applied" && <UrgencyBar days={days} />}
+          {call.status !== "closed" && call.status !== "applied" && call.status !== "descartada" && <UrgencyBar days={days} />}
           {call.notes && (
             <p style={{ margin: "8px 0 0", fontSize: 12, color: "#777", lineHeight: 1.5 }}>
               {call.notes.length > 120 ? call.notes.slice(0, 120) + "…" : call.notes}
@@ -341,6 +355,31 @@ const CallCard = ({ call, onEdit, onToggleStar, onDelete }) => {
           >
             ★
           </button>
+          {call.status === "descartada" ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRecover(call.id); }}
+              style={{
+                background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 4,
+                color: "#1B813E", transition: "color 0.2s", fontWeight: 600,
+              }}
+              title="Recuperar convocatoria"
+            >
+              ↩
+            </button>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDiscard(call.id); }}
+              style={{
+                background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 4,
+                color: "#ccc", transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => (e.target.style.color = "#E67E22")}
+              onMouseLeave={(e) => (e.target.style.color = "#ccc")}
+              title="Descartar convocatoria"
+            >
+              ⊘
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(call.id); }}
             style={{
@@ -459,10 +498,18 @@ export default function FundingTracker() {
           // userEdits = { added: [...], deleted: [...ids], modified: {id: {...}} }
           const deletedIds = new Set(userEdits.deleted || []);
           const modified = userEdits.modified || {};
+          const discardedIds = new Set(userEdits.discarded || []);
 
           baseCalls = baseCalls
             .filter((c) => !deletedIds.has(c.id))
-            .map((c) => modified[c.id] ? { ...c, ...modified[c.id] } : c);
+            .map((c) => {
+              let updated = modified[c.id] ? { ...c, ...modified[c.id] } : c;
+              // Aplicar estado descartada si el usuario lo descartó
+              if (discardedIds.has(c.id) && updated.status !== "descartada") {
+                updated = { ...updated, status: "descartada", _prevStatus: updated.status };
+              }
+              return updated;
+            });
 
           // Añadir convocatorias manuales del usuario
           if (userEdits.added) {
@@ -472,6 +519,9 @@ export default function FundingTracker() {
       } catch {
         // No user edits yet
       }
+
+      // 3. Auto-clasificar convocatorias auto-detectadas según deadline
+      baseCalls = baseCalls.map(autoClassify);
 
       setCalls(baseCalls);
       setLoaded(true);
@@ -487,11 +537,23 @@ export default function FundingTracker() {
       try {
         const baseIds = new Set(INITIAL_CALLS.map((c) => c.id));
         const added = calls.filter((c) => !baseIds.has(c.id) && !c.auto_detected);
-        // Simplificado: guardamos el estado completo de ediciones del usuario
+        // Guardar descartadas y modificaciones del usuario
+        const discarded = calls.filter((c) => c.status === "descartada").map((c) => c.id);
+        const modified = {};
+        calls.forEach((c) => {
+          if (baseIds.has(c.id) || c.auto_detected) {
+            // Guardar cambios de estado hechos por el usuario (starred, status, etc.)
+            if (c.status === "applied" || c.starred || c._prevStatus) {
+              modified[c.id] = { status: c.status, starred: c.starred };
+              if (c._prevStatus) modified[c.id]._prevStatus = c._prevStatus;
+            }
+          }
+        });
         await window.storage.set("funding-calls-user-edits", JSON.stringify({
           added,
           deleted: [],
-          modified: {},
+          modified,
+          discarded,
         }));
       } catch (e) {
         console.error("Save error:", e);
@@ -531,6 +593,20 @@ export default function FundingTracker() {
     setCalls((prev) => prev.map((c) => (c.id === id ? { ...c, starred: !c.starred } : c)));
   };
 
+  const discardCall = (id) => {
+    setCalls((prev) => prev.map((c) => (c.id === id ? { ...c, status: "descartada", _prevStatus: c.status } : c)));
+  };
+
+  const recoverCall = (id) => {
+    setCalls((prev) => prev.map((c) => {
+      if (c.id !== id) return c;
+      // Restaurar al estado anterior, o auto-clasificar si era auto-detectada
+      const restored = { ...c, status: c._prevStatus || "open" };
+      delete restored._prevStatus;
+      return c.auto_detected ? autoClassify(restored) : restored;
+    }));
+  };
+
   const resetData = () => {
     setCalls(INITIAL_CALLS);
   };
@@ -538,12 +614,15 @@ export default function FundingTracker() {
   // Filtering & sorting
   const filtered = calls
     .filter((c) => {
-      if (filter === "starred") return c.starred;
+      if (filter === "descartada") return c.status === "descartada";
+      if (filter === "starred") return c.starred && c.status !== "descartada";
       if (filter === "urgent") {
         const d = daysUntil(c.deadline);
-        return d !== null && d >= 0 && d <= 30 && c.status !== "closed";
+        return d !== null && d >= 0 && d <= 30 && c.status !== "closed" && c.status !== "descartada";
       }
-      if (filter !== "all" && c.status !== filter) return false;
+      // "all" excluye descartadas
+      if (filter === "all") return c.status !== "descartada";
+      if (c.status !== filter) return false;
       return true;
     })
     .filter((c) => sourceFilter === "all" || c.source === sourceFilter)
@@ -561,12 +640,17 @@ export default function FundingTracker() {
     });
 
   // Stats
+  const activeCalls = calls.filter((c) => c.status !== "descartada");
   const openCount = calls.filter((c) => c.status === "open").length;
+  const upcomingCount = calls.filter((c) => c.status === "upcoming").length;
   const urgentCount = calls.filter((c) => {
     const d = daysUntil(c.deadline);
-    return d !== null && d >= 0 && d <= 30 && c.status !== "closed";
+    return d !== null && d >= 0 && d <= 30 && c.status !== "closed" && c.status !== "descartada";
   }).length;
   const appliedCount = calls.filter((c) => c.status === "applied").length;
+  const closedCount = calls.filter((c) => c.status === "closed").length;
+  const discardedCount = calls.filter((c) => c.status === "descartada").length;
+  const starredCount = calls.filter((c) => c.starred && c.status !== "descartada").length;
 
   return (
     <div style={{
@@ -622,8 +706,9 @@ export default function FundingTracker() {
             {[
               { label: "Abiertas", value: openCount, icon: "🟢" },
               { label: "Urgentes (<30d)", value: urgentCount, icon: "🔴" },
+              { label: "Próximas", value: upcomingCount, icon: "🟠" },
               { label: "Solicitadas", value: appliedCount, icon: "🔵" },
-              { label: "Total", value: calls.length, icon: "📋" },
+              { label: "Activas", value: activeCalls.length, icon: "📋" },
             ].map((s) => (
               <div
                 key={s.label}
@@ -661,13 +746,14 @@ export default function FundingTracker() {
 
           {/* Status filter */}
           {[
-            { id: "all", label: "Todas" },
-            { id: "open", label: "Abiertas" },
-            { id: "upcoming", label: "Próximas" },
-            { id: "urgent", label: "🔴 Urgentes" },
-            { id: "starred", label: "★ Favoritas" },
-            { id: "applied", label: "Solicitadas" },
-            { id: "closed", label: "Cerradas" },
+            { id: "all", label: `Todas (${activeCalls.length})` },
+            { id: "urgent", label: `🔴 Urgentes (${urgentCount})` },
+            { id: "open", label: `Abiertas (${openCount})` },
+            { id: "upcoming", label: `Próximas (${upcomingCount})` },
+            { id: "starred", label: `★ Favoritas (${starredCount})` },
+            { id: "applied", label: `Solicitadas (${appliedCount})` },
+            { id: "descartada", label: `Descartadas (${discardedCount})` },
+            { id: "closed", label: `Cerradas (${closedCount})` },
           ].map((f) => (
             <button
               key={f.id}
@@ -731,6 +817,8 @@ export default function FundingTracker() {
                 onEdit={openEdit}
                 onToggleStar={toggleStar}
                 onDelete={deleteCall}
+                onDiscard={discardCall}
+                onRecover={recoverCall}
               />
             ))
           )}

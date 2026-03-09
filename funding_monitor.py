@@ -366,15 +366,33 @@ ORGANISMO_TO_SOURCE = {
 }
 
 
+def classify_by_date(fecha_str):
+    """Clasifica el estado de una convocatoria según su fecha."""
+    if not fecha_str:
+        return "open"  # Sin fecha → abierta por defecto
+    try:
+        deadline = datetime.strptime(fecha_str[:10], "%Y-%m-%d")
+        days = (deadline - datetime.now()).days
+        if days < 0:
+            return "closed"
+        elif days > 30:
+            return "upcoming"
+        else:
+            return "open"  # ≤30 días, urgente se calcula en el dashboard
+    except (ValueError, TypeError):
+        return "open"
+
+
 def convert_to_dashboard_format(result):
     """Convierte un resultado del monitor al formato del dashboard."""
+    fecha = result.get("fecha", "")
     return {
         "id": f"auto_{result['id']}",
         "title": result["titulo"][:200],
         "source": ORGANISMO_TO_SOURCE.get(result["organismo"], "otra"),
         "url": result["url"],
-        "deadline": result.get("fecha", ""),
-        "status": "open",
+        "deadline": fecha,
+        "status": classify_by_date(fecha),
         "elegibility": "",
         "budget": "",
         "notes": f"[Auto-detectada] Organismo: {result['organismo']} · Tipo: {result['tipo']} · "
@@ -413,8 +431,14 @@ def generate_calls_json(all_results, output_path="public/calls.json"):
         if call["id"] not in old_auto_ids:
             new_auto_calls.append(call)
 
-    # Mantener auto-detectadas anteriores + añadir nuevas
-    auto_calls = [c for c in existing_calls if c.get("auto_detected", False)]
+    # Mantener auto-detectadas anteriores (reclasificar por fecha) + añadir nuevas
+    auto_calls = []
+    for c in existing_calls:
+        if c.get("auto_detected", False):
+            # Reclasificar excepto descartadas (el usuario las descartó manualmente)
+            if c.get("status") != "descartada":
+                c["status"] = classify_by_date(c.get("deadline", ""))
+            auto_calls.append(c)
     auto_calls.extend(new_auto_calls)
 
     # Limitar auto-detectadas a las últimas 50
