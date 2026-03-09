@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-03-09T07:11:00.093489",
-  "total": 21,
+  "last_updated": "2026-03-09T07:18:50.483238",
+  "total": 23,
   "manual_count": 15,
-  "auto_count": 6,
-  "new_this_run": 0,
+  "auto_count": 8,
+  "new_this_run": 2,
   "calls": [
     {
       "id": "1",
@@ -268,6 +268,34 @@
       "starred": false,
       "auto_detected": true,
       "detected_date": "2026-03-08"
+    },
+    {
+      "id": "auto_041ba0dee415",
+      "title": "Convocatoria de ayudas para la contratación de ayudantes de investigación y técnicos de laboratorio cofinanciadas por Fondo Social Europeo a través del Programa Operativo de Empleo Juvenil y la Inicia",
+      "source": "cm",
+      "url": "https://mcyt.educa.madrid.org/madrid-ciencia-tecnologia/convocatorias/convocatorias-2018",
+      "deadline": "2026-03-09",
+      "status": "closed",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: Madri+d · Tipo: Nacional · Relevancia: 15% · Keywords: I+D, ayuda, convocatoria. ",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-09"
+    },
+    {
+      "id": "auto_b910869950c3",
+      "title": "STAY UP TO DATENews & EventsNewslettersPress releasesAnnual ReportsAAL ForumPrevious CallsLearn more about our previous callsInterested in knowing what challenges AAL is addressing in the field of hea",
+      "source": "eit",
+      "url": "https://www.aal-europe.eu/stay-up-to-date/",
+      "deadline": "2026-03-09",
+      "status": "closed",
+      "elegibility": "",
+      "budget": "",
+      "notes": "[Auto-detectada] Organismo: AAL Programme · Tipo: Europea · Relevancia: 5% · Keywords: call. ",
+      "starred": false,
+      "auto_detected": true,
+      "detected_date": "2026-03-09"
     }
   ]
 }
