@@ -957,12 +957,45 @@ def convert_to_dashboard_format(result):
     }
 
 
+def load_user_edits():
+    """
+    Lee user_edits.json del repositorio para respetar los cambios del usuario
+    (descartadas, eliminadas, modificaciones de estado, etc.).
+    El dashboard guarda este archivo vía GitHub API.
+    """
+    edits = {"discarded": [], "deleted": [], "modified": {}, "added": []}
+    # Buscar user_edits.json en varias ubicaciones posibles
+    for path in ["user_edits.json", "public/user_edits.json"]:
+        p = Path(path)
+        if p.exists():
+            try:
+                data = json.loads(p.read_text())
+                edits["discarded"] = data.get("discarded", [])
+                edits["deleted"] = data.get("deleted", [])
+                edits["modified"] = data.get("modified", {})
+                edits["added"] = data.get("added", [])
+                log.info(f"user_edits.json cargado: {len(edits['discarded'])} descartadas, "
+                         f"{len(edits['deleted'])} eliminadas, {len(edits['modified'])} modificadas")
+                return edits
+            except (json.JSONDecodeError, KeyError) as e:
+                log.warning(f"Error leyendo {path}: {e}")
+    log.info("No se encontró user_edits.json — no hay ediciones del usuario")
+    return edits
+
+
 def generate_calls_json(all_results, output_path="public/calls.json"):
     """
     Genera/actualiza calls.json combinando convocatorias manuales existentes
     con las auto-detectadas por el monitor.
+    Respeta user_edits.json para no pisar cambios del usuario.
     """
     output = Path(output_path)
+
+    # Cargar ediciones del usuario (descartadas, eliminadas, etc.)
+    user_edits = load_user_edits()
+    discarded_ids = set(user_edits["discarded"])
+    deleted_ids = set(user_edits["deleted"])
+    modified_map = user_edits["modified"]  # {id: {status, starred, ...}}
 
     # Cargar calls.json existente (con convocatorias manuales)
     existing_calls = []
@@ -977,25 +1010,60 @@ def generate_calls_json(all_results, output_path="public/calls.json"):
     manual_calls = [c for c in existing_calls if not c.get("auto_detected", False)]
     old_auto_ids = {c["id"] for c in existing_calls if c.get("auto_detected", False)}
 
+    # Eliminar las que el usuario eliminó definitivamente
+    manual_calls = [c for c in manual_calls if c["id"] not in deleted_ids]
+
     # Convertir nuevos resultados
     new_auto_calls = []
     for r in all_results:
         call = convert_to_dashboard_format(r)
-        if call["id"] not in old_auto_ids:
+        if call["id"] not in old_auto_ids and call["id"] not in deleted_ids:
             new_auto_calls.append(call)
 
     # Mantener auto-detectadas anteriores (reclasificar por fecha) + añadir nuevas
     auto_calls = []
     for c in existing_calls:
         if c.get("auto_detected", False):
-            # Reclasificar excepto descartadas (el usuario las descartó manualmente)
-            if c.get("status") != "descartada":
-                c["status"] = classify_by_date(c.get("deadline", ""))
+            cid = c["id"]
+            # Eliminar si el usuario la borró definitivamente
+            if cid in deleted_ids:
+                continue
+            # Respetar descartadas del usuario (tanto de calls.json como de user_edits)
+            if cid in discarded_ids or c.get("status") == "descartada":
+                c["status"] = "descartada"
+            else:
+                # Aplicar modificaciones del usuario (status, starred, etc.)
+                if cid in modified_map:
+                    user_mod = modified_map[cid]
+                    if user_mod.get("status") == "descartada":
+                        c["status"] = "descartada"
+                    elif user_mod.get("status") == "applied":
+                        c["status"] = "applied"
+                    else:
+                        # Reclasificar por fecha solo si el usuario no cambió el status manualmente
+                        c["status"] = classify_by_date(c.get("deadline", ""))
+                    if "starred" in user_mod:
+                        c["starred"] = user_mod["starred"]
+                else:
+                    # Sin modificaciones del usuario → reclasificar por fecha
+                    c["status"] = classify_by_date(c.get("deadline", ""))
             auto_calls.append(c)
     auto_calls.extend(new_auto_calls)
 
     # Limitar auto-detectadas a las últimas 50
     auto_calls = auto_calls[-50:]
+
+    # Aplicar modificaciones del usuario a las manuales también
+    for c in manual_calls:
+        cid = c["id"]
+        if cid in discarded_ids:
+            c["status"] = "descartada"
+        elif cid in modified_map:
+            user_mod = modified_map[cid]
+            if "status" in user_mod:
+                c["status"] = user_mod["status"]
+            if "starred" in user_mod:
+                c["starred"] = user_mod["starred"]
 
     # Combinar todo
     all_calls = manual_calls + auto_calls
