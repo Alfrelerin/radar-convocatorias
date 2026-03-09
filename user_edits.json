@@ -1,0 +1,43 @@
+{
+  "added": [],
+  "deleted": [],
+  "modified": {
+    "1": {
+      "status": "upcoming",
+      "starred": true
+    },
+    "2": {
+      "status": "closed",
+      "starred": true
+    },
+    "3": {
+      "status": "open",
+      "starred": true
+    },
+    "5": {
+      "status": "upcoming",
+      "starred": true
+    },
+    "6": {
+      "status": "open",
+      "starred": true
+    },
+    "9": {
+      "status": "upcoming",
+      "starred": true
+    },
+    "10": {
+      "status": "open",
+      "starred": true
+    },
+    "11": {
+      "status": "upcoming",
+      "starred": true
+    },
+    "15": {
+      "status": "open",
+      "starred": true
+    }
+  },
+  "discarded": []
+}
