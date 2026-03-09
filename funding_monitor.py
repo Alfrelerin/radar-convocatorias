@@ -34,9 +34,11 @@ from bs4 import BeautifulSoup
 import smtplib
 import json
 import hashlib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+from urllib.parse import urljoin
 from pathlib import Path
 import logging
 import os
@@ -332,6 +334,330 @@ def score_relevance(title, summary=""):
     return min(score, 100), matches
 
 
+# ─────────────────────────────────────────────────────
+# EXTRACCIÓN INTELIGENTE DE PRESUPUESTO Y DEADLINE
+# ─────────────────────────────────────────────────────
+
+# Patrones de dinero: "10M€", "500.000€", "hasta 2,5 millones", "EUR 1.000.000", etc.
+BUDGET_PATTERNS = [
+    # "10M€" / "10 M€" / "10M euros"
+    r'(\d[\d.,]*)\s*M[€E]\b',
+    r'(\d[\d.,]*)\s*[Mm]illones?\s*(?:de\s+)?(?:euros?|€|EUR)',
+    # "hasta 500.000€" / "500.000 EUR"
+    r'(?:hasta|up\s+to|max\.?)?\s*(\d[\d.,]+)\s*(?:€|EUR|euros?)',
+    r'€\s*(\d[\d.,]+)',
+    # "presupuesto: X" / "dotación: X" / "budget: X"
+    r'(?:presupuesto|dotación|financiación|budget|funding|importe)[:\s]+(\d[\d.,]*\s*(?:M€|M|millones|€|EUR|euros?)[\d.,\s€EUReuros]*)',
+]
+
+# Meses en español e inglés
+MONTH_MAP = {
+    'enero': '01', 'january': '01', 'jan': '01', 'ene': '01',
+    'febrero': '02', 'february': '02', 'feb': '02',
+    'marzo': '03', 'march': '03', 'mar': '03',
+    'abril': '04', 'april': '04', 'apr': '04', 'abr': '04',
+    'mayo': '05', 'may': '05',
+    'junio': '06', 'june': '06', 'jun': '06',
+    'julio': '07', 'july': '07', 'jul': '07',
+    'agosto': '08', 'august': '08', 'aug': '08', 'ago': '08',
+    'septiembre': '09', 'september': '09', 'sep': '09', 'sept': '09',
+    'octubre': '10', 'october': '10', 'oct': '10',
+    'noviembre': '11', 'november': '11', 'nov': '11',
+    'diciembre': '12', 'december': '12', 'dec': '12', 'dic': '12',
+}
+
+# Patrones de fecha: "17/03/2026", "17 de marzo de 2026", "March 17, 2026", "2026-03-17"
+DATE_PATTERNS = [
+    # dd/mm/yyyy o dd-mm-yyyy
+    r'(\d{1,2})[/\-](\d{1,2})[/\-](20\d{2})',
+    # "17 de marzo de 2026"
+    r'(\d{1,2})\s+de\s+(\w+)\s+de\s+(20\d{2})',
+    # "March 17, 2026"
+    r'(\w+)\s+(\d{1,2}),?\s+(20\d{2})',
+    # yyyy-mm-dd
+    r'(20\d{2})-(\d{2})-(\d{2})',
+]
+
+# Palabras clave que indican un deadline
+DEADLINE_KEYWORDS = [
+    'plazo', 'deadline', 'cierre', 'fecha límite', 'fecha limite',
+    'finaliza', 'hasta el', 'before', 'closes', 'submission',
+    'presentación', 'solicitud', 'fin de plazo', 'vence',
+]
+
+# Palabras basura que indican que un texto NO es un título de convocatoria
+GARBAGE_INDICATORS = [
+    'cookie', 'privacy', 'newsletter', 'suscríbete', 'subscribe',
+    'stay up to date', 'menú', 'menu', 'footer', 'header',
+    'copyright', 'todos los derechos', 'all rights', 'política de',
+    'terms of', 'condiciones de uso', 'aviso legal', 'legal notice',
+    'iniciar sesión', 'log in', 'sign in', 'registrar',
+    'twitter', 'facebook', 'instagram', 'linkedin', 'youtube',
+    'buscar', 'search', 'compartir', 'share',
+]
+
+
+def extract_budget(text):
+    """Extrae el presupuesto/importe de un texto."""
+    if not text:
+        return ""
+
+    for pattern in BUDGET_PATTERNS:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            # Extraer el contexto alrededor del match (±40 chars) para dar más info
+            start = max(0, match.start() - 20)
+            end = min(len(text), match.end() + 20)
+            snippet = text[start:end].strip()
+            # Limpiar el snippet
+            snippet = re.sub(r'\s+', ' ', snippet)
+            if len(snippet) > 80:
+                snippet = snippet[:80] + "…"
+            return snippet
+
+    return ""
+
+
+def parse_date_from_text(text):
+    """Intenta extraer una fecha de un texto y devuelve en formato YYYY-MM-DD."""
+    if not text:
+        return ""
+
+    # Primero buscar cerca de palabras clave de deadline
+    text_lower = text.lower()
+
+    for keyword in DEADLINE_KEYWORDS:
+        idx = text_lower.find(keyword)
+        if idx >= 0:
+            # Buscar fecha en los 100 caracteres siguientes a la palabra clave
+            nearby = text[idx:idx + 120]
+            date = _extract_first_date(nearby)
+            if date:
+                return date
+
+    # Si no encontró cerca de keywords, buscar cualquier fecha futura en el texto
+    date = _extract_first_date(text)
+    if date:
+        try:
+            d = datetime.strptime(date, "%Y-%m-%d")
+            # Solo devolver si es futura o reciente (hasta 30 días pasados)
+            if (d - datetime.now()).days >= -30:
+                return date
+        except ValueError:
+            pass
+
+    return ""
+
+
+def _extract_first_date(text):
+    """Extrae la primera fecha válida de un texto."""
+    # dd/mm/yyyy o dd-mm-yyyy
+    m = re.search(r'(\d{1,2})[/\-](\d{1,2})[/\-](20\d{2})', text)
+    if m:
+        day, month, year = m.group(1), m.group(2), m.group(3)
+        try:
+            d = datetime(int(year), int(month), int(day))
+            return d.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    # "17 de marzo de 2026"
+    m = re.search(r'(\d{1,2})\s+de\s+(\w+)\s+de\s+(20\d{2})', text, re.IGNORECASE)
+    if m:
+        day, month_name, year = m.group(1), m.group(2).lower(), m.group(3)
+        month_num = MONTH_MAP.get(month_name)
+        if month_num:
+            try:
+                d = datetime(int(year), int(month_num), int(day))
+                return d.strftime("%Y-%m-%d")
+            except ValueError:
+                pass
+
+    # "March 17, 2026"
+    m = re.search(r'(\w+)\s+(\d{1,2}),?\s+(20\d{2})', text)
+    if m:
+        month_name, day, year = m.group(1).lower(), m.group(2), m.group(3)
+        month_num = MONTH_MAP.get(month_name)
+        if month_num:
+            try:
+                d = datetime(int(year), int(month_num), int(day))
+                return d.strftime("%Y-%m-%d")
+            except ValueError:
+                pass
+
+    # yyyy-mm-dd (ISO)
+    m = re.search(r'(20\d{2})-(\d{2})-(\d{2})', text)
+    if m:
+        try:
+            d = datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            return d.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    return ""
+
+
+def clean_title(raw_text):
+    """Limpia un título crudo: quita navegación, newlines, texto excesivo."""
+    if not raw_text:
+        return ""
+    # Quitar newlines y espacios múltiples
+    title = re.sub(r'[\n\r\t]+', ' ', raw_text)
+    title = re.sub(r'\s{2,}', ' ', title).strip()
+
+    # Si tiene más de 200 chars, probablemente es un bloque de texto, no un título
+    # Intentar extraer solo la primera frase/línea significativa
+    if len(title) > 200:
+        # Cortar en el primer punto seguido de espacio, o en los primeros 150 chars
+        dot_idx = title.find('. ', 30)
+        if 30 < dot_idx < 200:
+            title = title[:dot_idx + 1]
+        else:
+            title = title[:150] + "…"
+
+    return title
+
+
+def is_garbage(text):
+    """Detecta si un texto es basura (navegación, cookies, etc.)."""
+    text_lower = text.lower()
+    # Demasiado corto
+    if len(text.strip()) < 15:
+        return True
+    # Contiene indicadores de basura
+    garbage_count = sum(1 for g in GARBAGE_INDICATORS if g in text_lower)
+    if garbage_count >= 2:
+        return True
+    # Demasiadas mayúsculas consecutivas (menú de navegación)
+    if len(re.findall(r'[A-ZÁÉÍÓÚ]{3,}', text)) > 5:
+        return True
+    # Ratio texto/números muy bajo y muy corto (IDs, códigos de página)
+    if len(text) < 30 and sum(c.isdigit() for c in text) > len(text) * 0.5:
+        return True
+    return False
+
+
+def extract_requirements(text):
+    """Extrae requisitos/elegibilidad principales de un texto."""
+    if not text:
+        return ""
+    text_lower = text.lower()
+    requisitos = []
+
+    # Patrones de tipo de beneficiario
+    BENEFICIARY_PATTERNS = [
+        (r'(?:pyme|PYME|pymes)', "PYME"),
+        (r'(?:empresa|empresas)\s*(?:privada|innovadora|tecnológica)?', "Empresa"),
+        (r'(?:autónom[oa]s?|freelance)', "Autónomos"),
+        (r'(?:centro|centros)\s*(?:de\s+)?(?:investigación|tecnológ)', "Centro de investigación"),
+        (r'(?:universidad|universidades|académic)', "Universidad"),
+        (r'(?:consorcio|consorcios|agrupaci[oó]n)', "Consorcio"),
+        (r'(?:investigador|investigadora)\s*(?:principal)?', "Investigador principal"),
+        (r'(?:hospital|clínica|centro\s+sanitario|SNS|servicio\s+nacional\s+de\s+salud)', "Centro sanitario/SNS"),
+        (r'(?:doctorado|doctoral|tesis)', "Doctorado"),
+        (r'(?:start-?up|emprendedor|emprendimiento)', "Startup/Emprendedor"),
+        (r'(?:sin\s+(?:ánimo|animo)\s+de\s+lucro|ONG|asociaci[oó]n)', "Sin ánimo de lucro"),
+        (r'(?:persona\s+física|particular)', "Persona física"),
+    ]
+
+    for pattern, label in BENEFICIARY_PATTERNS:
+        if re.search(pattern, text, re.IGNORECASE):
+            if label not in requisitos:
+                requisitos.append(label)
+
+    # Requisitos geográficos
+    GEO_PATTERNS = [
+        (r'(?:comunidad\s+de\s+madrid|CAM\b)', "Sede en Comunidad de Madrid"),
+        (r'(?:sede\s+(?:en\s+)?España|territorio\s+(?:español|nacional))', "Sede en España"),
+        (r'(?:pa[ií]ses?\s+(?:de\s+la\s+)?UE|Uni[oó]n\s+Europea|EU\s+member)', "País UE"),
+    ]
+
+    for pattern, label in GEO_PATTERNS:
+        if re.search(pattern, text, re.IGNORECASE):
+            if label not in requisitos:
+                requisitos.append(label)
+
+    # Requisitos de tamaño/antigüedad
+    SIZE_PATTERNS = [
+        (r'(?:menos\s+de\s+|<\s*)\d+\s*empleados', None),  # captura textual
+        (r'(?:antigüedad|constituida|creada)\s*(?:mínima|de)?\s*(?:de\s*)?\d+\s*(?:año|mes)', None),
+        (r'(?:facturación|ingresos)\s*(?:mínima|de)?\s*(?:de\s*)?\d', None),
+    ]
+
+    for pattern, label in SIZE_PATTERNS:
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            snippet = text[m.start():min(m.end() + 20, len(text))].strip()
+            snippet = re.sub(r'\s+', ' ', snippet)[:60]
+            if snippet not in requisitos:
+                requisitos.append(snippet)
+
+    # Si no encontramos nada estructurado, buscar sección "requisitos" o "beneficiarios"
+    if not requisitos:
+        req_match = re.search(
+            r'(?:requisitos|beneficiarios|elegibilidad|eligibility|who\s+can\s+apply)[:\s]+(.*?)(?:\.|$)',
+            text, re.IGNORECASE
+        )
+        if req_match:
+            snippet = req_match.group(1).strip()[:120]
+            if snippet and len(snippet) > 5:
+                requisitos.append(snippet)
+
+    return " · ".join(requisitos[:4]) if requisitos else ""
+
+
+def extract_bases_url(soup, base_url):
+    """Busca el enlace a las bases oficiales de la convocatoria."""
+    if not soup:
+        return ""
+
+    # Palabras clave que indican un enlace a bases
+    BASES_KEYWORDS = [
+        'bases', 'convocatoria oficial', 'resolución', 'boletín oficial',
+        'BOE', 'BOCM', 'DOUE', 'orden de bases', 'texto completo',
+        'full text', 'call document', 'official call', 'legal basis',
+        'descargar bases', 'ver convocatoria', 'acceder', 'PDF',
+        'reguladoras', 'extracto',
+    ]
+
+    # Buscar en todos los enlaces de la página
+    for a_tag in soup.find_all('a', href=True):
+        link_text = a_tag.get_text(strip=True).lower()
+        href = a_tag['href'].lower()
+
+        for kw in BASES_KEYWORDS:
+            if kw.lower() in link_text or kw.lower() in href:
+                full_url = a_tag['href']
+                if not full_url.startswith('http'):
+                    full_url = urljoin(base_url, full_url)
+                return full_url
+
+    # Buscar enlaces a PDFs (suelen ser las bases)
+    for a_tag in soup.find_all('a', href=True):
+        if a_tag['href'].lower().endswith('.pdf'):
+            full_url = a_tag['href']
+            if not full_url.startswith('http'):
+                full_url = urljoin(base_url, full_url)
+            return full_url
+
+    return ""
+
+
+def fetch_detail_page(url, timeout=12):
+    """Descarga una página de detalle para extraer info adicional."""
+    headers = {"User-Agent": "Mozilla/5.0 (Funding Monitor; academic research)"}
+    try:
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        # Texto completo de la página (para extraer budget, deadline, requisitos)
+        full_text = soup.get_text(separator=' ', strip=True)
+        return soup, full_text
+    except Exception as e:
+        log.debug(f"No se pudo leer página de detalle {url}: {e}")
+        return None, ""
+
+
 def check_rss_feeds():
     results = []
     for feed_config in RSS_FEEDS:
@@ -342,20 +668,54 @@ def check_rss_feeds():
                 title = entry.get("title", "")
                 summary = entry.get("summary", "")
                 link = entry.get("link", "")
-                if is_relevant(title, summary):
-                    score, matches = score_relevance(title, summary)
-                    results.append({
-                        "titulo": title,
-                        "resumen": summary[:300],
-                        "url": link,
-                        "fecha": entry.get("published", ""),
-                        "organismo": feed_config["organismo"],
-                        "tipo": feed_config["tipo"],
-                        "fuente": feed_config["nombre"],
-                        "score": score,
-                        "keywords_encontrados": matches,
-                        "id": generate_id(f"{title}{link}"),
-                    })
+
+                if not is_relevant(title, summary):
+                    continue
+
+                title = clean_title(title)
+                if is_garbage(title):
+                    continue
+
+                score, matches = score_relevance(title, summary)
+                full_text = f"{title} {summary}"
+
+                # Intentar extraer deadline y budget del resumen RSS
+                deadline = parse_date_from_text(full_text)
+                budget = extract_budget(full_text)
+                requirements = extract_requirements(full_text)
+
+                # Si no hay suficiente info, intentar leer la página de detalle
+                detail_soup = None
+                if (not deadline or not budget) and link:
+                    detail_soup, detail_text = fetch_detail_page(link)
+                    if detail_text:
+                        if not deadline:
+                            deadline = parse_date_from_text(detail_text)
+                        if not budget:
+                            budget = extract_budget(detail_text)
+                        if not requirements:
+                            requirements = extract_requirements(detail_text)
+
+                bases_url = ""
+                if detail_soup:
+                    bases_url = extract_bases_url(detail_soup, link)
+
+                results.append({
+                    "titulo": title,
+                    "resumen": summary[:300],
+                    "url": link,
+                    "fecha": deadline if deadline else entry.get("published", ""),
+                    "deadline_extracted": bool(deadline),
+                    "organismo": feed_config["organismo"],
+                    "tipo": feed_config["tipo"],
+                    "fuente": feed_config["nombre"],
+                    "score": score,
+                    "keywords_encontrados": matches,
+                    "budget": budget,
+                    "requirements": requirements,
+                    "bases_url": bases_url,
+                    "id": generate_id(f"{title}{link}"),
+                })
         except Exception as e:
             log.warning(f"Error en feed {feed_config['nombre']}: {e}")
     return results
@@ -370,29 +730,69 @@ def check_web_sources():
             resp = requests.get(source["url"], headers=headers, timeout=15)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
+            page_text = soup.get_text(separator=' ', strip=True)
+
+            found_in_source = 0
             for selector in source["selector"].split(","):
                 elements = soup.select(selector.strip())
                 for el in elements[:10]:
-                    text = el.get_text(strip=True)
+                    if found_in_source >= 5:  # Max 5 resultados por fuente
+                        break
+
+                    raw_text = el.get_text(strip=True)
+                    title = clean_title(raw_text)
+
+                    if is_garbage(title):
+                        continue
+                    if not is_relevant(title) or len(title) < 20:
+                        continue
+
+                    # Extraer enlace
                     link_tag = el.find("a")
                     link = link_tag["href"] if link_tag and link_tag.get("href") else source["url"]
                     if not link.startswith("http"):
-                        from urllib.parse import urljoin
                         link = urljoin(source["url"], link)
-                    if is_relevant(text) and len(text) > 20:
-                        score, matches = score_relevance(text)
-                        results.append({
-                            "titulo": text[:200],
-                            "resumen": "",
-                            "url": link,
-                            "fecha": datetime.now().strftime("%Y-%m-%d"),
-                            "organismo": source["organismo"],
-                            "tipo": source["tipo"],
-                            "fuente": source["nombre"],
-                            "score": score,
-                            "keywords_encontrados": matches,
-                            "id": generate_id(text[:200]),
-                        })
+
+                    score, matches = score_relevance(title)
+
+                    # Extraer info del texto del elemento
+                    el_text = raw_text
+                    budget = extract_budget(el_text)
+                    deadline = parse_date_from_text(el_text)
+                    requirements = extract_requirements(el_text)
+                    bases_url = ""
+
+                    # Si no tenemos suficiente info y el enlace es diferente a la fuente,
+                    # intentar leer la página de detalle de esa convocatoria
+                    if link != source["url"] and (not deadline or not budget):
+                        detail_soup, detail_text = fetch_detail_page(link)
+                        if detail_text:
+                            if not deadline:
+                                deadline = parse_date_from_text(detail_text)
+                            if not budget:
+                                budget = extract_budget(detail_text)
+                            if not requirements:
+                                requirements = extract_requirements(detail_text)
+                        if detail_soup:
+                            bases_url = extract_bases_url(detail_soup, link)
+
+                    results.append({
+                        "titulo": title,
+                        "resumen": "",
+                        "url": link,
+                        "fecha": deadline if deadline else "",
+                        "deadline_extracted": bool(deadline),
+                        "organismo": source["organismo"],
+                        "tipo": source["tipo"],
+                        "fuente": source["nombre"],
+                        "score": score,
+                        "keywords_encontrados": matches,
+                        "budget": budget,
+                        "requirements": requirements,
+                        "bases_url": bases_url,
+                        "id": generate_id(title),
+                    })
+                    found_in_source += 1
         except Exception as e:
             log.warning(f"Error en web {source['nombre']}: {e}")
     return results
@@ -524,6 +924,21 @@ def classify_by_date(fecha_str):
 def convert_to_dashboard_format(result):
     """Convierte un resultado del monitor al formato del dashboard."""
     fecha = result.get("fecha", "")
+    budget = result.get("budget", "")
+    requirements = result.get("requirements", "")
+    bases_url = result.get("bases_url", "")
+
+    # Construir notas con la info extraída
+    notes_parts = []
+    if result.get("resumen"):
+        notes_parts.append(result["resumen"][:150])
+    notes_parts.append(
+        f"[Auto-detectada] Organismo: {result['organismo']} · Tipo: {result['tipo']} · "
+        f"Relevancia: {result['score']}% · Keywords: {', '.join(result['keywords_encontrados'][:5])}"
+    )
+    if not result.get("deadline_extracted"):
+        notes_parts.append("⚠️ Fecha no confirmada (verificar en web)")
+
     return {
         "id": f"auto_{result['id']}",
         "title": result["titulo"][:200],
@@ -531,13 +946,13 @@ def convert_to_dashboard_format(result):
         "url": result["url"],
         "deadline": fecha,
         "status": classify_by_date(fecha),
-        "elegibility": "",
-        "budget": "",
-        "notes": f"[Auto-detectada] Organismo: {result['organismo']} · Tipo: {result['tipo']} · "
-                 f"Relevancia: {result['score']}% · Keywords: {', '.join(result['keywords_encontrados'][:5])}. "
-                 f"{result.get('resumen', '')[:150]}",
+        "elegibility": requirements,
+        "budget": budget,
+        "bases_url": bases_url,
+        "notes": " | ".join(notes_parts),
         "starred": False,
         "auto_detected": True,
+        "deadline_confirmed": result.get("deadline_extracted", False),
         "detected_date": datetime.now().strftime("%Y-%m-%d"),
     }
 

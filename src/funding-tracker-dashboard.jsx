@@ -354,14 +354,36 @@ const CallCard = ({ call, onEdit, onToggleStar, onDelete, onDiscard, onRecover }
             <Badge text={source.label} color={source.color} bg={source.color + "15"} />
             <Badge text={status.label} color={status.color} bg={status.bg} />
             {call.elegibility && <span style={{ fontSize: 11, color: "#888" }}>{call.elegibility}</span>}
+            {call.auto_detected && !call.deadline_confirmed && (
+              <span style={{ fontSize: 10, color: "#E67E22", fontWeight: 600 }} title="La fecha no fue extraída automáticamente, puede no ser exacta">⚠️ Fecha sin confirmar</span>
+            )}
           </div>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.35 }}>{call.title}</h3>
-          <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "#666" }}>📅 {formatDate(call.deadline)}</span>
             {call.budget && <span style={{ fontSize: 12, color: "#666" }}>💰 {call.budget}</span>}
           </div>
           {call.status !== "closed" && call.status !== "applied" && call.status !== "descartada" && <UrgencyBar days={days} />}
-          {call.notes && <p style={{ margin: "8px 0 0", fontSize: 12, color: "#777", lineHeight: 1.5 }}>{call.notes.length > 120 ? call.notes.slice(0, 120) + "…" : call.notes}</p>}
+          {/* Requirements section */}
+          {call.elegibility && call.elegibility.length > 15 && (
+            <div style={{ margin: "6px 0 0", padding: "4px 8px", background: "#F0F7FF", borderRadius: 6, fontSize: 11, color: "#2563EB", lineHeight: 1.4 }}>
+              📋 <strong>Requisitos:</strong> {call.elegibility.length > 100 ? call.elegibility.slice(0, 100) + "…" : call.elegibility}
+            </div>
+          )}
+          {call.notes && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#777", lineHeight: 1.5 }}>{call.notes.length > 120 ? call.notes.slice(0, 120) + "…" : call.notes}</p>}
+          {/* Links row */}
+          <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+            {call.url && (
+              <a href={call.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ fontSize: 11, color: "#2C5364", textDecoration: "none", fontWeight: 600 }}>
+                🔗 Ver convocatoria
+              </a>
+            )}
+            {call.bases_url && (
+              <a href={call.bases_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ fontSize: 11, color: "#7C3AED", textDecoration: "none", fontWeight: 600 }}>
+                📄 Bases oficiales
+              </a>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
           <button onClick={(e) => { e.stopPropagation(); onToggleStar(call.id); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: call.starred ? "#E67E22" : "#ddd" }} title={call.starred ? "Quitar favorito" : "Favorito"}>★</button>
@@ -395,7 +417,7 @@ const InputField = ({ label, value, onChange, type = "text", placeholder, requir
   </div>
 );
 
-const EMPTY_FORM = { title: "", source: "", url: "", deadline: "", status: "upcoming", elegibility: "", budget: "", notes: "", starred: false };
+const EMPTY_FORM = { title: "", source: "", url: "", deadline: "", status: "upcoming", elegibility: "", budget: "", bases_url: "", notes: "", starred: false };
 
 // ─── Main Component ───
 
@@ -762,7 +784,8 @@ export default function FundingTracker() {
             <InputField label="Presupuesto" value={form.budget} onChange={updateForm("budget")} placeholder="Ej: 50.000€" />
           </div>
           <InputField label="Elegibilidad" value={form.elegibility} onChange={updateForm("elegibility")} options={ELEGIBILITY} />
-          <InputField label="URL" value={form.url} onChange={updateForm("url")} placeholder="https://..." />
+          <InputField label="URL convocatoria" value={form.url} onChange={updateForm("url")} placeholder="https://..." />
+          <InputField label="URL bases oficiales" value={form.bases_url} onChange={updateForm("bases_url")} placeholder="https://... (enlace al BOE, BOCM, PDF de bases...)" />
           <InputField label="Notas" value={form.notes} onChange={updateForm("notes")} textarea placeholder="Requisitos, plazos..." />
           <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
             <button onClick={saveCall} disabled={!form.title || !form.source} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: form.title && form.source ? "#2C5364" : "#ccc", color: "#fff", fontSize: 14, fontWeight: 600, cursor: form.title && form.source ? "pointer" : "default", fontFamily: "inherit" }}>
