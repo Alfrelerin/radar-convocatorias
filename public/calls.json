@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-03-09T12:17:40.423126",
-  "total": 23,
+  "last_updated": "2026-03-09T14:17:21.159145",
+  "total": 26,
   "manual_count": 15,
-  "auto_count": 8,
-  "new_this_run": 0,
+  "auto_count": 11,
+  "new_this_run": 3,
   "calls": [
     {
       "id": "1",
@@ -295,6 +295,54 @@
       "notes": "[Auto-detectada] Organismo: AAL Programme · Tipo: Europea · Relevancia: 5% · Keywords: call. ",
       "starred": false,
       "auto_detected": true,
+      "detected_date": "2026-03-09"
+    },
+    {
+      "id": "auto_74e0f8e971c1",
+      "title": "Convocatorias de la Fundación BBVAConvocatorias abiertasPremiosPremios de Investigación Sociedad Científica Informática de España-Fundación BBVA 2026M…",
+      "source": "fundacion",
+      "url": "https://www.linkedin.com/cws/share?url=https://www.fbbva.es/convocatorias/",
+      "deadline": "",
+      "status": "open",
+      "elegibility": "Investigador principal · Centro sanitario/SNS · Doctorado",
+      "budget": "",
+      "bases_url": "",
+      "notes": "[Auto-detectada] Organismo: Fundación BBVA · Tipo: Privada · Relevancia: 5% · Keywords: convocatoria | ⚠️ Fecha no confirmada (verificar en web)",
+      "starred": false,
+      "auto_detected": true,
+      "deadline_confirmed": false,
+      "detected_date": "2026-03-09"
+    },
+    {
+      "id": "auto_0054db1e6a3d",
+      "title": "Convocatorias y Ayudas a la InvestigaciónSeccionesConvocatorias 2025Convocatorias 2024Convocatorias 2023Convocatorias 2022Convocatorias 2021Convocator…",
+      "source": "cm",
+      "url": "https://www.comunidad.madrid/servicios/investigacion-cientifica-e-innovacion-tecnologica/convocatorias-ayudas-investigacion#convocatorias-2025",
+      "deadline": "2023-06-28",
+      "status": "closed",
+      "elegibility": "Empresa · Autónomos · Centro de investigación · Universidad",
+      "budget": "2021, por importe de 10.512.000 euros.Publicada en el B",
+      "bases_url": "",
+      "notes": "[Auto-detectada] Organismo: Comunidad de Madrid · Tipo: Nacional · Relevancia: 10% · Keywords: ayuda, convocatoria",
+      "starred": false,
+      "auto_detected": true,
+      "deadline_confirmed": true,
+      "detected_date": "2026-03-09"
+    },
+    {
+      "id": "auto_fc3c4d7354e2",
+      "title": "Convocatoria de ayudas para la contratación de ayudantes de investigación y técnicos de laboratorio cofinanciadas por Fondo Social Europeo a través de…",
+      "source": "cm",
+      "url": "https://mcyt.educa.madrid.org/madrid-ciencia-tecnologia/convocatorias/convocatorias-2018",
+      "deadline": "",
+      "status": "open",
+      "elegibility": "Investigador principal · Sede en Comunidad de Madrid",
+      "budget": "2018, por importe de 9.960.000 euros.SABER MÁSPrograma",
+      "bases_url": "https://mcusercontent.com/34aa5f7b9420e48b6d7c33383/files/7795fcd8-9894-bf39-daa8-27cfe72a2710/Informaci_oacute_n_general_Taller_Estrategia_profesional.pdf",
+      "notes": "[Auto-detectada] Organismo: Madri+d · Tipo: Nacional · Relevancia: 10% · Keywords: ayuda, convocatoria | ⚠️ Fecha no confirmada (verificar en web)",
+      "starred": false,
+      "auto_detected": true,
+      "deadline_confirmed": false,
       "detected_date": "2026-03-09"
     }
   ]
