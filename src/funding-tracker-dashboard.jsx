@@ -6,7 +6,13 @@ const SOURCES = [
   { id: "cm", label: "Comunidad de Madrid", color: "#C41E3A" },
   { id: "horizon", label: "Horizon Europe", color: "#003399" },
   { id: "aei", label: "AEI", color: "#6B4C9A" },
+  { id: "enisa", label: "ENISA", color: "#2E86AB" },
+  { id: "fecyt", label: "FECYT", color: "#8B5CF6" },
+  { id: "redes", label: "Red.es / ICEX", color: "#0891B2" },
+  { id: "eit", label: "EIT Health / AAL", color: "#059669" },
+  { id: "eranet", label: "ERA-NET / COST", color: "#1D4ED8" },
   { id: "fundacion", label: "Fundaciones Privadas", color: "#B8860B" },
+  { id: "agregador", label: "Agregadores", color: "#78716C" },
   { id: "otra", label: "Otra", color: "#555" },
 ];
 
@@ -788,6 +794,44 @@ export default function FundingTracker() {
           </select>
         </div>
       </div>
+
+      {/* Bulk actions */}
+      {filter === "closed" && closedCount > 0 && (
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "12px 32px 0" }}>
+          <button
+            onClick={() => {
+              if (confirm(`¿Eliminar definitivamente las ${closedCount} convocatorias cerradas? No se podrán recuperar.`)) {
+                setCalls((prev) => prev.filter((c) => c.status !== "closed"));
+              }
+            }}
+            style={{
+              padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+              background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA",
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            🗑️ Eliminar definitivamente todas las cerradas ({closedCount})
+          </button>
+        </div>
+      )}
+      {filter === "descartada" && discardedCount > 0 && (
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "12px 32px 0" }}>
+          <button
+            onClick={() => {
+              if (confirm(`¿Eliminar definitivamente las ${discardedCount} convocatorias descartadas? No se podrán recuperar.`)) {
+                setCalls((prev) => prev.filter((c) => c.status !== "descartada"));
+              }
+            }}
+            style={{
+              padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+              background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA",
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            🗑️ Eliminar definitivamente todas las descartadas ({discardedCount})
+          </button>
+        </div>
+      )}
 
       {/* Cards */}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "16px 32px 40px" }}>

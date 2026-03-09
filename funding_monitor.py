@@ -65,6 +65,7 @@ CONFIG = {
 # ─────────────────────────────────────────────────────
 
 RSS_FEEDS = [
+    # ─── Nacionales ───
     {
         "nombre": "CDTI - Ayudas",
         "url": "https://www.cdti.es/rss/ayudas",
@@ -78,6 +79,26 @@ RSS_FEEDS = [
         "organismo": "AEI",
     },
     {
+        "nombre": "ISCIII - Convocatorias",
+        "url": "https://www.isciii.es/rss/convocatorias",
+        "tipo": "Nacional",
+        "organismo": "ISCIII",
+    },
+    {
+        "nombre": "FECYT - Convocatorias",
+        "url": "https://www.fecyt.es/es/rss.xml",
+        "tipo": "Nacional",
+        "organismo": "FECYT",
+    },
+    # ─── Comunidad de Madrid ───
+    {
+        "nombre": "Comunidad de Madrid - Subvenciones",
+        "url": "https://www.comunidad.madrid/gobierno/informacion-juridica-legislacion/rss",
+        "tipo": "Nacional",
+        "organismo": "Comunidad de Madrid",
+    },
+    # ─── Europeas ───
+    {
         "nombre": "CORDIS - Health",
         "url": "https://cordis.europa.eu/search/en?q=contenttype%3D%27project%27%20AND%20programme%2Fcode%3D%27HORIZON.1.1%27&format=rss",
         "tipo": "Europea",
@@ -90,16 +111,10 @@ RSS_FEEDS = [
         "organismo": "Euraxess",
     },
     {
-        "nombre": "ISCIII - Convocatorias",
-        "url": "https://www.isciii.es/rss/convocatorias",
-        "tipo": "Nacional",
-        "organismo": "ISCIII",
-    },
-    {
-        "nombre": "Comunidad de Madrid - Subvenciones",
-        "url": "https://www.comunidad.madrid/gobierno/informacion-juridica-legislacion/rss",
-        "tipo": "Nacional",
-        "organismo": "Comunidad de Madrid",
+        "nombre": "OpenAIRE - Health Projects",
+        "url": "https://explore.openaire.eu/rss/projects?fos=medical%20and%20health%20sciences",
+        "tipo": "Europea",
+        "organismo": "OpenAIRE",
     },
 ]
 
@@ -108,6 +123,7 @@ RSS_FEEDS = [
 # ─────────────────────────────────────────────────────
 
 WEB_SOURCES = [
+    # ─── Fundaciones Privadas ───
     {
         "nombre": "Fundación La Caixa - CaixaResearch",
         "url": "https://fundacionlacaixa.org/investigacion-y-becas/programas-investigacion/caixaresearch",
@@ -123,6 +139,64 @@ WEB_SOURCES = [
         "selector": "article, .convocatoria, .card",
     },
     {
+        "nombre": "Fundación Mapfre - Ayudas Investigación",
+        "url": "https://www.fundacionmapfre.org/premios-ayudas/ayudas-investigacion/",
+        "tipo": "Privada",
+        "organismo": "Fundación Mapfre",
+        "selector": "article, .card, .convocatoria, .ayuda",
+    },
+    {
+        "nombre": "Fundación Ramón Areces - Investigación",
+        "url": "https://www.fundacionareces.es/fundacionareces/es/becas-y-ayudas/convocatorias-702.html",
+        "tipo": "Privada",
+        "organismo": "Fundación Ramón Areces",
+        "selector": "article, .card, .convocatoria, .listado-item",
+    },
+    {
+        "nombre": "Fundación Mutua Madrileña - Ayudas Investigación",
+        "url": "https://www.fundacionmutua.es/salud/ayudas-a-la-investigacion/",
+        "tipo": "Privada",
+        "organismo": "Fundación Mutua Madrileña",
+        "selector": "article, .card, .convocatoria",
+    },
+    {
+        "nombre": "Fundación ONCE - Innovación y Accesibilidad",
+        "url": "https://www.fundaciononce.es/es/pagina/innovacion-y-accesibilidad",
+        "tipo": "Privada",
+        "organismo": "Fundación ONCE",
+        "selector": "article, .card, .node, .views-row",
+    },
+    # ─── Nacionales ───
+    {
+        "nombre": "ENISA - Préstamos Emprendedores",
+        "url": "https://www.enisa.es/es/financia-tu-empresa/lineas-de-financiacion",
+        "tipo": "Nacional",
+        "organismo": "ENISA",
+        "selector": "article, .card, .linea, .producto",
+    },
+    {
+        "nombre": "Red.es - Ayudas",
+        "url": "https://www.red.es/es/sobre-nosotros/convocatorias",
+        "tipo": "Nacional",
+        "organismo": "Red.es",
+        "selector": "article, .card, .views-row, .convocatoria",
+    },
+    {
+        "nombre": "ICEX - Ayudas Internacionalización",
+        "url": "https://www.icex.es/es/todos-nuestros-servicios/programas-y-servicios",
+        "tipo": "Nacional",
+        "organismo": "ICEX",
+        "selector": "article, .card, .programa, .servicio",
+    },
+    {
+        "nombre": "SEEIC - Convocatorias Estatales",
+        "url": "https://www.ciencia.gob.es/Convocatorias.html",
+        "tipo": "Nacional",
+        "organismo": "SEEIC",
+        "selector": "article, .card, .views-row, .listado-item",
+    },
+    # ─── Comunidad de Madrid ───
+    {
         "nombre": "Comunidad de Madrid - Doctorados Industriales",
         "url": "https://www.comunidad.madrid/servicios/educacion/doctorados-industriales",
         "tipo": "Nacional",
@@ -135,6 +209,49 @@ WEB_SOURCES = [
         "tipo": "Nacional",
         "organismo": "Comunidad de Madrid",
         "selector": "article, .views-row, .field-content, .card",
+    },
+    {
+        "nombre": "Madri+d - Convocatorias I+D",
+        "url": "https://www.madrimasd.org/convocatorias",
+        "tipo": "Nacional",
+        "organismo": "Madri+d",
+        "selector": "article, .card, .views-row, .convocatoria",
+    },
+    # ─── Europeas ───
+    {
+        "nombre": "EIT Health - Calls",
+        "url": "https://eithealth.eu/opportunities/",
+        "tipo": "Europea",
+        "organismo": "EIT Health",
+        "selector": "article, .card, .opportunity, .post-item",
+    },
+    {
+        "nombre": "AAL Programme - Calls",
+        "url": "https://www.aal-europe.eu/calls/",
+        "tipo": "Europea",
+        "organismo": "AAL Programme",
+        "selector": "article, .card, .call, .entry",
+    },
+    {
+        "nombre": "COST Actions - Open Calls",
+        "url": "https://www.cost.eu/funding/open-call-a-]simple-one-step-application-process/",
+        "tipo": "Europea",
+        "organismo": "COST",
+        "selector": "article, .card, .action, .call",
+    },
+    {
+        "nombre": "ERA-NET NEURON - Calls",
+        "url": "https://www.neuron-eranet.eu/joint-calls/open-calls/",
+        "tipo": "Europea",
+        "organismo": "ERA-NET NEURON",
+        "selector": "article, .card, .call, .entry-content",
+    },
+    {
+        "nombre": "FundingBox - Health Calls",
+        "url": "https://fundingbox.com/spaces/health",
+        "tipo": "Agregador",
+        "organismo": "FundingBox",
+        "selector": "article, .card, .call, .opportunity",
     },
 ]
 
@@ -355,14 +472,35 @@ def send_email(html_content, num_results):
 
 # Mapeo de organismo → source id del dashboard
 ORGANISMO_TO_SOURCE = {
+    # Nacionales
     "CDTI": "cdti",
     "AEI": "aei",
     "ISCIII": "isciii",
+    "FECYT": "fecyt",
+    "ENISA": "enisa",
+    "Red.es": "redes",
+    "ICEX": "redes",
+    "SEEIC": "aei",  # SEEIC agrega convocatorias estatales, similar a AEI
+    # Comunidad de Madrid
+    "Comunidad de Madrid": "cm",
+    "Madri+d": "cm",
+    # Europeas
     "Horizon Europe": "horizon",
     "Euraxess": "horizon",
-    "Comunidad de Madrid": "cm",
+    "EIT Health": "eit",
+    "AAL Programme": "eit",
+    "COST": "eranet",
+    "ERA-NET NEURON": "eranet",
+    "OpenAIRE": "horizon",
+    # Privadas
     "Fundación La Caixa": "fundacion",
     "Fundación BBVA": "fundacion",
+    "Fundación Mapfre": "fundacion",
+    "Fundación Ramón Areces": "fundacion",
+    "Fundación Mutua Madrileña": "fundacion",
+    "Fundación ONCE": "fundacion",
+    # Agregadores
+    "FundingBox": "agregador",
 }
 
 
