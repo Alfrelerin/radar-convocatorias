@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-03-11T09:06:51.854923",
-  "total": 26,
+  "last_updated": "2026-03-11T09:20:00.115217",
+  "total": 28,
   "manual_count": 15,
-  "auto_count": 11,
-  "new_this_run": 0,
+  "auto_count": 13,
+  "new_this_run": 2,
   "calls": [
     {
       "id": "1",
@@ -344,6 +344,38 @@
       "auto_detected": true,
       "deadline_confirmed": false,
       "detected_date": "2026-03-09"
+    },
+    {
+      "id": "auto_8356c3a07c6e",
+      "title": "Madrid en cifrasLa Comunidad de Madrid es el principal centro aglutinador de la I+D+I nacional",
+      "source": "cm",
+      "url": "https://www.comunidad.madrid/inversion/innova/madrid-cifras",
+      "deadline": "",
+      "status": "open",
+      "elegibility": "Sede en Comunidad de Madrid",
+      "budget": "",
+      "bases_url": "https://www.comunidad.madrid/gobierno/estadisticas/informes-economicos",
+      "notes": "[Auto-detectada] Organismo: Comunidad de Madrid · Tipo: Nacional · Relevancia: 5% · Keywords: I+D | ⚠️ Fecha no confirmada (verificar en web)",
+      "starred": false,
+      "auto_detected": true,
+      "deadline_confirmed": false,
+      "detected_date": "2026-03-11"
+    },
+    {
+      "id": "auto_c42ae52a716a",
+      "title": "El Ecosistema Madrileño de I+i y la Cuádruple Hélice (SM2i – 4H)El Ecosistema de la Comunidad de Madrid de Investigación e Innovación (SM2i) se caract…",
+      "source": "cm",
+      "url": "https://www.comunidad.madrid/inversion/estrategia-s3/ecosistema-madrileno-ii-cuadruple-helice-sm2i-4h",
+      "deadline": "",
+      "status": "open",
+      "elegibility": "Sede en Comunidad de Madrid",
+      "budget": "Estocolmo o París (>3.000 millones €/a) está en crecimie",
+      "bases_url": "https://www.comunidad.madrid/sites/default/files/anexo_5.1._marco_de_accion_prioritaria_map_para_la_red_natura_2000_en_la_comunidad_de_madrid.pdf",
+      "notes": "[Auto-detectada] Organismo: Comunidad de Madrid · Tipo: Nacional · Relevancia: 5% · Keywords: innovación | ⚠️ Fecha no confirmada (verificar en web)",
+      "starred": false,
+      "auto_detected": true,
+      "deadline_confirmed": false,
+      "detected_date": "2026-03-11"
     }
   ]
 }
