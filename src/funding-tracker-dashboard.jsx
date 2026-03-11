@@ -70,9 +70,11 @@ const INITIAL_CALLS = [
   },
   {
     id: "6", title: "AES 2026 - Proyectos de I+D+I en Salud (ISCIII)", source: "isciii",
-    url: "https://www.isciii.es/", deadline: "2026-03-17", status: "open",
-    elegibility: "Centro acreditado SNS", budget: "152M€ totales AES",
-    notes: "Plazo: 17/feb - 17/mar 2026. Requiere vinculación con SNS.", starred: true,
+    url: "https://www.isciii.es/w/aprobada-la-acci%C3%B3n-estrat%C3%A9gica-en-salud-2026-principal-herramienta-para-financiar-en-espa%C3%B1a-i-d-i-en-salud",
+    bases_url: "https://www.iisaragon.es/wp-content/uploads/2025/12/AES_2026.pdf",
+    deadline: "2026-03-17", status: "open",
+    elegibility: "Centro acreditado SNS", budget: "152M€ totales AES · Proyectos 3-4 años",
+    notes: "Plazo: 17/feb - 17/mar 2026. Requiere vinculación con SNS. Neuron podría participar a través de colaboración con centro acreditado.", starred: true,
   },
   {
     id: "7", title: "AES 2026 - Desarrollo Tecnológico en Salud (DTS)", source: "isciii",
@@ -93,10 +95,11 @@ const INITIAL_CALLS = [
     notes: "Plazo: 1-29 octubre 2026. BrainHealth JTC1 y JTC2.", starred: true,
   },
   {
-    id: "10", title: "Horizon Europe - HLTH-2026-01 Health", source: "horizon",
-    url: "https://hadea.ec.europa.eu/news/2026-horizon-europe-health-calls-proposals-2026-02-12_en",
+    id: "10", title: "Horizon Europe - HLTH-2026-01-TOOL-03 (NAMs biomedical research)", source: "horizon",
+    url: "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/calls-for-proposals?callIdentifier=HORIZON-HLTH-2026-01",
+    bases_url: "https://research-and-innovation.ec.europa.eu/document/download/36c7287d-d38f-4a96-94ca-0dfce1375a48_en",
     deadline: "2026-04-16", status: "open", elegibility: "Empresa + Centro público (consorcio)",
-    budget: "Hasta 10M€ · 100% financiación",
+    budget: "Hasta 10M€ por proyecto · Financiación hasta 100%",
     notes: "Deadline 16/04/2026. Consorcio mín. 3 países.", starred: true,
   },
   {
@@ -124,10 +127,11 @@ const INITIAL_CALLS = [
     notes: "Apertura habitual en verano. Vía colaboración con CSIC.", starred: false,
   },
   {
-    id: "15", title: "Programa LÁNZATE - Comunidad de Madrid", source: "cm",
+    id: "15", title: "Programa LÁNZATE - Comunidad de Madrid (1ª edición 2026)", source: "cm",
     url: "https://www.comunidad.madrid/noticias/2026/02/25/comunidad-madrid-crea-programa-lanzate-promover-doble-carrera-clinica-cientifica-investigadores-emergentes",
+    bases_url: "https://www.comunidad.madrid/file/514616/download",
     deadline: "2026-03-18", status: "open", elegibility: "Centro acreditado SNS",
-    budget: "~1M€ total · Hasta 2 años",
+    budget: "~1M€ total · Proyectos hasta 2 años · Equipamiento, fungible, PI",
     notes: "1ª edición. Doble carrera clínica-investigadora. Requiere IIS públicos acreditados.", starred: true,
   },
 ];
@@ -513,7 +517,11 @@ export default function FundingTracker() {
         const modified = {};
         calls.forEach((c) => {
           if (baseIds.has(c.id) || c.auto_detected) {
-            if (c.status === "applied" || c.starred || c._prevStatus) {
+            // Find the original call to detect ANY change (status, starred, etc.)
+            const orig = INITIAL_CALLS.find((o) => o.id === c.id);
+            const statusChanged = c.status === "applied" || c.status === "descartada" || c._prevStatus;
+            const starChanged = orig ? c.starred !== orig.starred : c.starred;
+            if (statusChanged || starChanged) {
               modified[c.id] = { status: c.status, starred: c.starred };
               if (c._prevStatus) modified[c.id]._prevStatus = c._prevStatus;
             }
