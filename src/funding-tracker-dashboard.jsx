@@ -70,7 +70,7 @@ const INITIAL_CALLS = [
   },
   {
     id: "6", title: "AES 2026 - Proyectos de I+D+I en Salud (ISCIII)", source: "isciii",
-    url: "https://www.isciii.es/w/aprobada-la-acci%C3%B3n-estrat%C3%A9gica-en-salud-2026-principal-herramienta-para-financiar-en-espa%C3%B1a-i-d-i-en-salud",
+    url: "https://www.isciii.es/financiacion/aes/como-solicitar",
     bases_url: "https://www.iisaragon.es/wp-content/uploads/2025/12/AES_2026.pdf",
     deadline: "2026-03-17", status: "open",
     elegibility: "Centro acreditado SNS", budget: "152M€ totales AES · Proyectos 3-4 años",
@@ -78,19 +78,23 @@ const INITIAL_CALLS = [
   },
   {
     id: "7", title: "AES 2026 - Desarrollo Tecnológico en Salud (DTS)", source: "isciii",
-    url: "https://www.isciii.es/", deadline: "2026-03-10", status: "closed",
+    url: "https://www.isciii.es/financiacion/aes/como-solicitar",
+    deadline: "2026-03-10", status: "closed",
     elegibility: "Centro acreditado SNS", budget: "Variable",
     notes: "Plazo cerrado 10/03/2026. Preparar para AES 2027.", starred: false,
   },
   {
     id: "8", title: "AES 2026 - Investigación Clínica Independiente", source: "isciii",
-    url: "https://www.isciii.es/", deadline: "2026-03-11", status: "open",
+    url: "https://www.isciii.es/financiacion/aes/como-solicitar",
+    bases_url: "https://www.iisaragon.es/wp-content/uploads/2025/12/AES_2026.pdf",
+    deadline: "2026-03-11", status: "open",
     elegibility: "Centro acreditado SNS", budget: "Variable · 4-6 años",
     notes: "Plazo: 11/feb - 11/mar 2026. Validación clínica de wearable.", starred: false,
   },
   {
     id: "9", title: "AES 2026 - Colaboración Internacional", source: "isciii",
-    url: "https://www.isciii.es/", deadline: "2026-10-29", status: "upcoming",
+    url: "https://www.isciii.es/financiacion/aes/como-solicitar",
+    deadline: "2026-10-29", status: "upcoming",
     elegibility: "Centro acreditado SNS", budget: "Variable",
     notes: "Plazo: 1-29 octubre 2026. BrainHealth JTC1 y JTC2.", starred: true,
   },
@@ -440,8 +444,53 @@ export default function FundingTracker() {
   const [ghToken, setGhToken] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [ghStatus, setGhStatus] = useState(""); // "", "saving", "saved", "error"
+  const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "error"
   const ghShaRef = useRef(null);
   const saveTimerRef = useRef(null);
+
+  // Build edits object from current calls state
+  const buildEdits = useCallback(() => {
+    const baseIds = new Set(INITIAL_CALLS.map((c) => c.id));
+    const added = calls.filter((c) => !baseIds.has(c.id) && !c.auto_detected);
+    const discarded = calls.filter((c) => c.status === "descartada").map((c) => c.id);
+    const deleted = [];
+    const modified = {};
+    calls.forEach((c) => {
+      const cid = c.id;
+      if (baseIds.has(cid) || c.auto_detected) {
+        // Always track status + starred for any known call
+        modified[cid] = { status: c.status, starred: !!c.starred };
+        if (c._prevStatus) modified[cid]._prevStatus = c._prevStatus;
+      }
+    });
+    const currentIds = new Set(calls.map((c) => c.id));
+    INITIAL_CALLS.forEach((c) => { if (!currentIds.has(c.id)) deleted.push(c.id); });
+    return { added, deleted, modified, discarded };
+  }, [calls]);
+
+  // Force save function (called by button or auto-save)
+  const forceSave = useCallback(async () => {
+    if (!loaded || calls.length === 0) return;
+    const edits = buildEdits();
+    setSaveStatus("saving");
+
+    // Always save to localStorage
+    try {
+      localStorage.setItem("funding-calls-user-edits", JSON.stringify(edits));
+    } catch (e) { console.error("localStorage save error:", e); }
+
+    // Save to GitHub if token available
+    if (ghToken) {
+      setGhStatus("saving");
+      const newSha = await ghSaveEdits(ghToken, edits, ghShaRef.current);
+      ghShaRef.current = newSha;
+      setGhStatus(newSha ? "saved" : "error");
+      setTimeout(() => setGhStatus(""), 3000);
+    }
+
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus(""), 2000);
+  }, [loaded, calls, ghToken, buildEdits]);
 
   // Load data
   useEffect(() => {
@@ -465,8 +514,8 @@ export default function FundingTracker() {
       // 2. Load GitHub token from localStorage
       let token = "";
       try {
-        const t = await window.storage.get("gh-token");
-        if (t && t.value) { token = t.value; setGhToken(t.value); }
+        const t = localStorage.getItem("gh-token");
+        if (t) { token = t; setGhToken(t); }
       } catch {}
 
       // 3. Load user edits (GitHub first, then localStorage fallback)
@@ -477,8 +526,8 @@ export default function FundingTracker() {
       }
       if (!userEdits) {
         try {
-          const result = await window.storage.get("funding-calls-user-edits");
-          if (result && result.value) userEdits = JSON.parse(result.value);
+          const raw = localStorage.getItem("funding-calls-user-edits");
+          if (raw) userEdits = JSON.parse(raw);
         } catch {}
       }
 
@@ -504,50 +553,11 @@ export default function FundingTracker() {
     })();
   }, []);
 
-  // Save user edits (debounced)
+  // Auto-save user edits (debounced 2s)
   useEffect(() => {
     if (!loaded) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      (async () => {
-        const baseIds = new Set(INITIAL_CALLS.map((c) => c.id));
-        const added = calls.filter((c) => !baseIds.has(c.id) && !c.auto_detected);
-        const discarded = calls.filter((c) => c.status === "descartada").map((c) => c.id);
-        const deleted = [];
-        const modified = {};
-        calls.forEach((c) => {
-          if (baseIds.has(c.id) || c.auto_detected) {
-            // Find the original call to detect ANY change (status, starred, etc.)
-            const orig = INITIAL_CALLS.find((o) => o.id === c.id);
-            const statusChanged = c.status === "applied" || c.status === "descartada" || c._prevStatus;
-            const starChanged = orig ? c.starred !== orig.starred : c.starred;
-            if (statusChanged || starChanged) {
-              modified[c.id] = { status: c.status, starred: c.starred };
-              if (c._prevStatus) modified[c.id]._prevStatus = c._prevStatus;
-            }
-          }
-        });
-        // Also track deleted base calls
-        const currentIds = new Set(calls.map((c) => c.id));
-        INITIAL_CALLS.forEach((c) => { if (!currentIds.has(c.id)) deleted.push(c.id); });
-
-        const edits = { added, deleted, modified, discarded };
-
-        // Save to localStorage always
-        try {
-          await window.storage.set("funding-calls-user-edits", JSON.stringify(edits));
-        } catch {}
-
-        // Save to GitHub if token available
-        if (ghToken) {
-          setGhStatus("saving");
-          const newSha = await ghSaveEdits(ghToken, edits, ghShaRef.current);
-          ghShaRef.current = newSha;
-          setGhStatus(newSha ? "saved" : "error");
-          setTimeout(() => setGhStatus(""), 3000);
-        }
-      })();
-    }, 2000); // 2s debounce
+    saveTimerRef.current = setTimeout(() => { forceSave(); }, 2000);
   }, [calls, loaded]);
 
   const updateForm = (key) => (val) => setForm((f) => ({ ...f, [key]: val }));
@@ -572,7 +582,7 @@ export default function FundingTracker() {
 
   const saveGhToken = async (token) => {
     setGhToken(token);
-    try { await window.storage.set("gh-token", token); } catch {}
+    try { localStorage.setItem("gh-token", token); } catch {}
     if (token) {
       const gh = await ghLoadEdits(token);
       if (gh) ghShaRef.current = gh.sha;
@@ -642,6 +652,15 @@ export default function FundingTracker() {
                 style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
                 title="Configuración"
               >⚙️</button>
+              <button
+                onClick={() => forceSave()}
+                style={{
+                  background: saveStatus === "saved" ? "rgba(27,129,62,0.3)" : saveStatus === "saving" ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.15)",
+                  color: "#fff", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+                  transition: "background 0.3s",
+                }}
+                title="Guardar cambios"
+              >{saveStatus === "saving" ? "⏳" : saveStatus === "saved" ? "✅ Guardado" : "💾 Guardar"}</button>
               <button onClick={openNew} style={{ background: "#fff", color: "#0F2027", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.2)", fontFamily: "inherit" }}>
                 + Nueva
               </button>

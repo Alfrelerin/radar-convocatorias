@@ -199,11 +199,11 @@ WEB_SOURCES = [
     },
     # ─── Comunidad de Madrid ───
     {
-        "nombre": "Comunidad de Madrid - Doctorados Industriales",
-        "url": "https://www.comunidad.madrid/servicios/educacion/doctorados-industriales",
+        "nombre": "Comunidad de Madrid - Portal Innova (I+D+i)",
+        "url": "https://www.comunidad.madrid/inversion/innova",
         "tipo": "Nacional",
         "organismo": "Comunidad de Madrid",
-        "selector": "article, .field-item, .convocatoria",
+        "selector": "article, .card, .views-row, .field-content, .convocatoria",
     },
     {
         "nombre": "Comunidad de Madrid - Convocatorias Investigación",
